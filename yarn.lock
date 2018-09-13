@@ -106,9 +106,9 @@ prop-types@^15.6.0:
     loose-envify "^1.3.1"
     object-assign "^4.1.1"
 
-"react-native-swiper@https://github.com/merryjs/react-native-swiper.git":
+"react-native-swiper@https://github.com/mazikwyry/react-native-swiper.git":
   version "1.4.4"
-  resolved "https://github.com/merryjs/react-native-swiper.git#2051e49de8696fa96612d0262a32ec902b631394"
+  resolved "https://github.com/mazikwyry/react-native-swiper.git#2051e49de8696fa96612d0262a32ec902b631394"
   dependencies:
     create-react-class "^15.6.2"
     prop-types "^15.6.0"
