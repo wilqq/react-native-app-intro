@@ -7,7 +7,6 @@ import {
   StyleSheet,
   Text,
   View,
-  TouchableOpacity,
   Animated,
   Dimensions,
   Image,
@@ -52,113 +51,62 @@ const defaulStyles = {
     color: '#fff',
     fontSize: 20,
   },
-  controllText: {
-    color: '#fff',
-    fontSize: 22,
-    fontWeight: 'bold',
-  },
   dotStyle: {
     backgroundColor: 'rgba(255,255,255,.3)',
     width: 13,
     height: 13,
     borderRadius: 7,
-    marginLeft: 7,
-    marginRight: 7,
-    marginTop: 7,
-    marginBottom: 7,
+    margin: 7,
   },
   activeDotStyle: {
     backgroundColor: '#fff',
   },
   paginationContainer: {
-    position: 'absolute',
-    bottom: 25,
-    left: 0,
-    right: 0,
     flexDirection: 'row',
-    flex: 1,
-    justifyContent: 'center',
+    justifyContent: 'space-between',
     alignItems: 'center',
     backgroundColor: 'transparent',
+    paddingBottom: 10,
   },
   dotContainer: {
-    flex: 0.6,
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
   },
   btnContainer: {
-    flex: 0.2,
     justifyContent: 'center',
-    alignItems: 'center',
-    height: 50,
   },
   nextButtonText: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    fontFamily: 'Arial',
+    fontSize: 18,
+    fontFamily: 'Lato-Regular',
+  },
+  controllText: {
+    fontSize: 21,
+    fontFamily: 'Lato-Regular',
   },
   full: {
-    height: 80,
+    height: 50,
     width: 100,
     justifyContent: 'center',
     alignItems: 'center',
-  },
+  }
 }
 
 export default class AppIntro extends Component {
+  parallax = new Animated.Value(0);
+
   constructor(props) {
     super(props);
 
     this.styles = StyleSheet.create(assign({}, defaulStyles, props.customStyles));
-
-    this.state = {
-      skipFadeOpacity: new Animated.Value(1),
-      doneFadeOpacity: new Animated.Value(0),
-      nextOpacity: new Animated.Value(1),
-      parallax: new Animated.Value(0),
-    };
   }
 
   onNextBtnClick = (context) => {
-    if (context.state.isScrolling || context.state.total < 2) return;
-    const state = context.state;
-    const diff = (context.props.loop ? 1 : 0) + 1 + context.state.index;
-    let x = 0;
-    if (state.dir === 'x') x = diff * state.width;
-    if (Platform.OS === 'ios') {
-      context.refs.scrollView.scrollTo({ y: 0, x });
-    } else {
-      context.refs.scrollView.setPage(diff);
-      context.onScrollEnd({
-        nativeEvent: {
-          position: diff,
-        },
-      });
-    }
+    this.scrollBy(1, context);
     this.props.onNextBtnClick(context.state.index);
   }
 
-  setDoneBtnOpacity = (value) => {
-    Animated.timing(
-      this.state.doneFadeOpacity,
-      { toValue: value },
-    ).start();
-  }
-
-  setSkipBtnOpacity = (value) => {
-    Animated.timing(
-      this.state.skipFadeOpacity,
-      { toValue: value },
-    ).start();
-  }
-
-  setNextOpacity = (value) => {
-    Animated.timing(
-      this.state.nextOpacity,
-      { toValue: value },
-    ).start();
-  }
   getTransform = (index, offset, level) => {
     const isFirstPage = index === 0;
     const statRange = isFirstPage ? 0 : windowsWidth * (index - 1);
@@ -170,7 +118,7 @@ export default class AppIntro extends Component {
     const transform = [{
       transform: [
         {
-          translateX: this.state.parallax.interpolate({
+          translateX: this.parallax.interpolate({
             inputRange: [statRange, endRange],
             outputRange: [
               isFirstPage ? leftPosition : leftPosition - (offset * level),
@@ -179,31 +127,52 @@ export default class AppIntro extends Component {
           }),
         }],
     }, {
-      opacity: this.state.parallax.interpolate({
+      opacity: this.parallax.interpolate({
         inputRange: [statRange, endRange], outputRange: [startOpacity, endOpacity],
       }),
     }];
+
     return {
       transform,
     };
+  }
+
+  scrollBy = (numerOfPages, context) => {
+    const state = context.state;
+    const diff = (context.props.loop ? 1 : 0) + numerOfPages + context.state.index;
+    let x = 0;
+
+    if (state.dir === 'x') {
+      x = diff * state.width
+    }
+
+    if (Platform.OS === 'ios') {
+      context.refs.scrollView.scrollTo({ y: 0, x });
+    } else {
+      context.refs.scrollView.setPage(diff);
+      context.onScrollEnd({
+        nativeEvent: {
+          position: diff,
+        },
+      });
+    }
   }
 
   renderPagination = (index, total, context) => {
     let isDoneBtnShow;
     let isSkipBtnShow;
     if (index === total - 1) {
-      this.setDoneBtnOpacity(1);
-      this.setSkipBtnOpacity(0);
-      this.setNextOpacity(0);
       isDoneBtnShow = true;
       isSkipBtnShow = false;
     } else {
-      this.setDoneBtnOpacity(0);
-      this.setSkipBtnOpacity(1);
-      this.setNextOpacity(1);
       isDoneBtnShow = false;
       isSkipBtnShow = true;
     }
+
+    const onSkipBtnClick = () => {
+      this.scrollBy(total - 1 - index, context);
+    };
+
     return (
       <View style={[this.styles.paginationContainer]}>
         {this.props.showSkipButton ? <SkipButton
@@ -211,22 +180,23 @@ export default class AppIntro extends Component {
           {...this.state}
           isSkipBtnShow={isSkipBtnShow}
           styles={this.styles}
-          onSkipBtnClick={() => this.props.onSkipBtnClick(index)} /> :
+          onSkipBtnClick={onSkipBtnClick} /> :
           <View style={this.styles.btnContainer} />
         }
-        {this.props.showDots && RenderDots(index, total, {
-          ...this.props,
-          styles: this.styles
-        })}
-        {this.props.showDoneButton ? <DoneButton
-            {...this.props}
-            {...this.state}
-            isDoneBtnShow={isDoneBtnShow}
-            styles={this.styles}
-            onNextBtnClick={this.onNextBtnClick.bind(this, context)}
-            onDoneBtnClick={this.props.onDoneBtnClick} /> :
-            <View style={this.styles.btnContainer} />
-          }
+        <View style={this.styles.dotContainer}>
+          {this.props.showDots && RenderDots(index, total, {
+            ...this.props,
+            styles: this.styles
+          })}
+        </View>
+        <DoneButton
+          {...this.props}
+          {...this.state}
+          isDoneBtnShow={isDoneBtnShow}
+          styles={this.styles}
+          onNextBtnClick={this.onNextBtnClick.bind(this, context)}
+          onDoneBtnClick={this.props.onDoneBtnClick}
+        />
       </View>
     );
   }
@@ -303,35 +273,17 @@ export default class AppIntro extends Component {
     return this.props.pageArray && this.props.pageArray.length > 0 && Platform.OS === 'android'
   }
 
+  onScrollEvent = () => Animated.event([{ x: this.parallax }]);
+
   render() {
-    const childrens = this.props.children;
-    const { pageArray } = this.props;
+    const { pageArray, children } = this.props;
+    const childrens = children && children.filter((child) => !!child);
     let pages = [];
     let androidPages = null;
     if (pageArray.length > 0) {
       pages = pageArray.map((page, i) => this.renderBasicSlidePage(i, page));
     } else {
-      if (Platform.OS === 'ios') {
-        pages = childrens.map((children, i) => this.renderChild(children, i, i));
-      } else {
-        androidPages = childrens.map((children, i) => {
-          const { transform } = this.getTransform(i, -windowsWidth / 3 * 2, 1);
-          pages.push(<View key={i} />);
-          return (
-            <Animated.View key={i} style={[{
-              position: 'absolute',
-              height: windowsHeight,
-              width: windowsWidth,
-              top: 0,
-            }, {
-              ...transform[0],
-            }]}
-            >
-              {this.renderChild(children, i, i)}
-            </Animated.View>
-          );
-        });
-      }
+      pages = childrens.map((children, i) => this.renderChild(children, i, i));
     }
 
     if (this.isToTintStatusBar()) {
@@ -352,9 +304,7 @@ export default class AppIntro extends Component {
 
             this.props.onSlideChange(state.index, state.total);
           }}
-          onScroll={Animated.event(
-            [{ x: this.state.parallax }]
-          )}
+          onScroll={this.onScrollEvent()}
         >
           {pages}
         </Swiper>
